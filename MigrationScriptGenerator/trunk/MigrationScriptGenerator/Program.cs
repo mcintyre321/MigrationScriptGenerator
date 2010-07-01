@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using DBDiff.Schema;
 using DBDiff.Schema.SQLServer;
 using DBDiff.Schema.SQLServer.Options;
@@ -28,10 +29,12 @@ namespace MigrationScriptGenerator
         //. $(SolutionName)Db_$(ConfigurationName) . $(SolutionName)Db_$(ConfigurationName)_Next $(ProjectDir)\Sql
 		static void Main(string[] args)
 		{
-		    GenerateScript(args[0], args[1], args[2], args[3], args[4]);
+		    
+		    GenerateScript(args[0], args[1], args[2], args[3], args[4], args[5]);
 		}
-        public static void GenerateScript(string oldServerName, string oldDbName, string newServerName, string newDbName, string scriptOutputDirectory)
+        public static void GenerateScript(string oldServerName, string oldDbName, string newServerName, string newDbName, string scriptOutputDirectory, string filters)
         {
+            filters = filters ?? "#default filter#";
 	    Console.WriteLine("Starting " + typeof(Program).Assembly.GetName().Name);
 			var sw = new Stopwatch();
 			sw.Start();
@@ -56,14 +59,16 @@ namespace MigrationScriptGenerator
 			var script = new StringBuilder();
 			bool issues = false;
 
-			foreach (
-				Table droppedTable in Enumerable.Where<Table>(diff.Tables, t => t.Status == Enums.ObjectStatusType.DropStatus))
+            Predicate<string> excludeTable = s => (filters).Split(';').Select(f => WildcardToRegex(f)).Any(r => r.IsMatch(s));
+			foreach (Table droppedTable in diff.Tables
+                .Where(t => !excludeTable(t.Name))
+                .Where(t => t.Status == Enums.ObjectStatusType.DropStatus))
 			{
 				WriteError("Table drop: " + droppedTable.Name);
 				script.AppendLine(droppedTable.ToSqlDrop());
 				issues = true;
 			}
-			foreach (Table table in diff.Tables)
+            foreach (Table table in diff.Tables.Where(t => !excludeTable(t.Name)))
 			{
 				foreach (Column droppedColumn in table.Columns
 					.Where(c => c.Status == Enums.ObjectStatusType.DropStatus))
@@ -122,21 +127,36 @@ namespace MigrationScriptGenerator
 		}
 
 
-		static void WriteError(string text, params object[] args)
-		{
-			WriteMessage(Assembly.GetEntryAssembly().GetName().Name, "Subcategory", Category.error, "Code",
-			             String.Format(text, args));
-		}
+        static void WriteError(string text, params object[] args)
+        {
+            WriteMessage(Assembly.GetEntryAssembly().GetName().Name, "Subcategory", Category.error, "Code",
+                         String.Format(text, args ?? new object[]{}));
+        }
 
-		static void WriteWarning(string text, params object[] args)
-		{
-			WriteMessage(Assembly.GetEntryAssembly().GetName().Name, "Subcategory", Category.warning, "Code",
-			             String.Format(text, args));
-		}
+        static void WriteWarning(string text)
+        {
+            WriteWarning(text, null);
+        }
+
+        static void WriteError(string text)
+        {
+            WriteError(text, null);
+        }
+
+        static void WriteWarning(string text, params object[] args)
+        {
+            WriteMessage(Assembly.GetEntryAssembly().GetName().Name, "Subcategory", Category.warning, "Code",
+                         String.Format(text, args ?? new object[] { }));
+        }
 
 		static void WriteMessage(string origin, string subcategory, Category category, string code, string text)
 		{
 			Console.WriteLine("{0} : {1} {2} {3} : {4}", origin, subcategory, category, code, text);
 		}
+
+        public static Regex WildcardToRegex(string pattern)
+        {
+            return new Regex("^" + Regex.Escape(pattern).Replace("\\*", ".*").Replace("\\?", ".") + "$", RegexOptions.IgnoreCase);
+        }
 	}
 }
