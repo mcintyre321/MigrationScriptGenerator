@@ -30,12 +30,11 @@ namespace MigrationScriptGenerator
 		static void Main(string[] args)
 		{
 		    
-		    GenerateScript(args[0], args[1], args[2], args[3], args[4], args[5]);
+		    GenerateScript(args[0], args[1], args[2], args[3], args[4]);
 		}
-        public static void GenerateScript(string oldServerName, string oldDbName, string newServerName, string newDbName, string scriptOutputDirectory, string filters)
+        public static void GenerateScript(string oldServerName, string oldDbName, string newServerName, string newDbName, string scriptOutputDirectory)
         {
-            filters = filters ?? "#default filter#";
-	    Console.WriteLine("Starting " + typeof(Program).Assembly.GetName().Name);
+	        Console.WriteLine("Starting " + typeof(Program).Assembly.GetName().Name);
 			var sw = new Stopwatch();
 			sw.Start();
 			var oldSmoServer = new Server(oldServerName);
@@ -59,16 +58,14 @@ namespace MigrationScriptGenerator
 			var script = new StringBuilder();
 			bool issues = false;
 
-            Predicate<string> excludeTable = s => (filters).Split(';').Select(f => WildcardToRegex(f)).Any(r => r.IsMatch(s));
 			foreach (Table droppedTable in diff.Tables
-                .Where(t => !excludeTable(t.Name))
                 .Where(t => t.Status == Enums.ObjectStatusType.DropStatus))
 			{
 				WriteError("Table drop: " + droppedTable.Name);
 				script.AppendLine(droppedTable.ToSqlDrop());
 				issues = true;
 			}
-            foreach (Table table in diff.Tables.Where(t => !excludeTable(t.Name)))
+            foreach (Table table in diff.Tables)
 			{
 				foreach (Column droppedColumn in table.Columns
 					.Where(c => c.Status == Enums.ObjectStatusType.DropStatus))
@@ -129,7 +126,7 @@ namespace MigrationScriptGenerator
 
         static void WriteError(string text, params object[] args)
         {
-            WriteMessage(Assembly.GetEntryAssembly().GetName().Name, "Subcategory", Category.error, "Code",
+            WriteMessage(typeof(Program).Assembly.GetName().Name, "Subcategory", Category.error, "Code",
                          String.Format(text, args ?? new object[]{}));
         }
 
@@ -145,7 +142,7 @@ namespace MigrationScriptGenerator
 
         static void WriteWarning(string text, params object[] args)
         {
-            WriteMessage(Assembly.GetEntryAssembly().GetName().Name, "Subcategory", Category.warning, "Code",
+            WriteMessage(typeof(Program).Assembly.GetName().Name, "Subcategory", Category.warning, "Code",
                          String.Format(text, args ?? new object[] { }));
         }
 
