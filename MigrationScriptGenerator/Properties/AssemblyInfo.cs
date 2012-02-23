@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("DatabaseMigrationManager")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("MigrationScriptGenerator")]
+[assembly: AssemblyDescription("Tool for automatically diffing two databases and creating migration scripts. Uses OpenDBDiff")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("DatabaseMigrationManager")]
-[assembly: AssemblyCopyright("Copyright ©  2009")]
+[assembly: AssemblyProduct("MigrationScriptGenerator")]
+[assembly: AssemblyCopyright("Copyright ©  2012")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
