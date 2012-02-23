@@ -13,7 +13,8 @@
     <tags>SQL Diff Migration</tags>
   </metadata>
   <files>
-    <file src="bin\Release\*.dll" target="lib" /> 
-    <file src="bin\Release\*.pdb" target="lib" /> 
+    <file src="bin\Release\*.dll" target="lib\net40" /> 
+    <file src="bin\Release\*.pdb" target="lib\net40" /> 
   </files>
+  
 </package>
