@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -34,24 +35,29 @@ namespace MigrationScriptGenerator
 		}
         public static void GenerateScript(string oldServerName, string oldDbName, string newServerName, string newDbName, string scriptOutputDirectory)
         {
+            GenerateScript(new SqlConnectionStringBuilder("server=" + oldServerName + ";database=" + oldDbName + ";trusted_connection=true"), new SqlConnectionStringBuilder("server=" + newServerName + ";database=" + newDbName + ";trusted_connection=true"), scriptOutputDirectory);
+        }
+
+        public static void GenerateScript(SqlConnectionStringBuilder old, SqlConnectionStringBuilder next, string scriptOutputDirectory)
+	    {
 	        Console.WriteLine("Starting " + typeof(Program).Assembly.GetName().Name);
 			var sw = new Stopwatch();
 			sw.Start();
-			var oldSmoServer = new Server(oldServerName);
-			Database oldSmoDb = oldSmoServer.Databases[oldDbName];
+			var oldSmoServer = new Server(old.DataSource);
+			Database oldSmoDb = oldSmoServer.Databases[old.InitialCatalog];
 			if (oldSmoDb == null)
 			{
-				oldSmoDb = new Database(oldSmoServer, oldDbName);
+				oldSmoDb = new Database(oldSmoServer, old.InitialCatalog);
 				oldSmoDb.Create();
 			}
 			
 
 			var options = new SqlOption();
 			var sql = new Generate();
-			sql.ConnectionString = "server=" + oldServerName + ";database=" + oldDbName + ";trusted_connection=true";
+            sql.ConnectionString = old.ToString();
 			DBDiff.Schema.SQLServer.Model.Database oldDiffDb = sql.Process(options);
 
-			sql.ConnectionString = "server=" + newServerName + ";database=" + newDbName + ";trusted_connection=true";
+            sql.ConnectionString = next.ToString();
 			DBDiff.Schema.SQLServer.Model.Database newDiffDb = sql.Process(options);
 
 			DBDiff.Schema.SQLServer.Model.Database diff = Generate.Compare(oldDiffDb, newDiffDb);
