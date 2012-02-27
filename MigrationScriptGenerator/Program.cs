@@ -31,9 +31,9 @@ namespace MigrationScriptGenerator
 		    
 		    GenerateScript(args[0], args[1], args[2], args[3], args[4]);
 		}
-        public static void GenerateScript(string oldServerName, string oldDbName, string newServerName, string newDbName, string scriptOutputDirectory)
+        public static void GenerateScript(string sourceServer, string sourceDb, string destServer, string destDb, string scriptOutputDirectory)
         {
-            GenerateScript(new SqlConnectionStringBuilder("server=" + oldServerName + ";database=" + oldDbName + ";trusted_connection=true"), new SqlConnectionStringBuilder("server=" + newServerName + ";database=" + newDbName + ";trusted_connection=true"), scriptOutputDirectory);
+            GenerateScript(new SqlConnectionStringBuilder("server=" + sourceServer + ";database=" + sourceDb + ";trusted_connection=true"), new SqlConnectionStringBuilder("server=" + destServer + ";database=" + destDb + ";trusted_connection=true"), scriptOutputDirectory);
         }
 
         public static void GenerateScript(SqlConnectionStringBuilder source, SqlConnectionStringBuilder destination, string scriptOutputDirectory, SqlOption option = null)
@@ -60,7 +60,7 @@ namespace MigrationScriptGenerator
             sql.ConnectionString = destination.ToString();
 			Database destinationDatabase = sql.Process();
 
-			Database diff = Generate.Compare(sourceDatabase, destinationDatabase);
+			Database diff = Generate.Compare(destinationDatabase, sourceDatabase);
 			var script = new StringBuilder();
 			bool issues = false;
 
@@ -71,32 +71,32 @@ namespace MigrationScriptGenerator
 				script.AppendLine(droppedTable.ToSqlDrop());
 				issues = true;
 			}
-            foreach (Table table in diff.Tables)
-			{
-				foreach (Column droppedColumn in table.Columns
-					.Where(c => c.Status == Enums.ObjectStatusType.DropStatus))
-				{
-					Column renamedColumn = table.Columns.SingleOrDefault(c => c.Id == droppedColumn.Id && c.Name != droppedColumn.Name);
-					if (renamedColumn != null)
-					{
-						WriteError("Column rename: " + droppedColumn.Parent.Name + "." + droppedColumn.Name);
-						Func<string, string> addSquareBracketsIfContainsADot = s => s.Contains(".") ? ("[" + s + "]") : s;
-						script.AppendFormat("\r\nsp_rename '{0}.{1}', '{2}', 'COLUMN';\r\nGO",
-						                    addSquareBracketsIfContainsADot(droppedColumn.Parent.Name),
-						                    addSquareBracketsIfContainsADot(droppedColumn.Name),
-						                    renamedColumn.Name);
-					}
-					else
-					{
-						WriteError("Column drop: " + droppedColumn.Parent.Name + "." + droppedColumn.Name);
-						script.AppendLine(droppedColumn.ToSqlDrop());
-					}
-					issues = true;
-				}
-			}
+            //foreach (Table table in diff.Tables)
+            //{
+            //    foreach (Column droppedColumn in table.Columns
+            //        .Where(c => c.Status == Enums.ObjectStatusType.DropStatus))
+            //    {
+            //        Column renamedColumn = table.Columns.SingleOrDefault(c => c.Id == droppedColumn.Id && c.Name != droppedColumn.Name);
+            //        if (renamedColumn != null)
+            //        {
+            //            WriteError("Column rename: " + droppedColumn.Parent.Name + "." + droppedColumn.Name);
+            //            Func<string, string> addSquareBracketsIfContainsADot = s => s.Contains(".") ? ("[" + s + "]") : s;
+            //            script.AppendFormat("\r\nsp_rename '{0}.{1}', '{2}', 'COLUMN';\r\nGO",
+            //                                addSquareBracketsIfContainsADot(droppedColumn.Parent.Name),
+            //                                addSquareBracketsIfContainsADot(droppedColumn.Name),
+            //                                renamedColumn.Name);
+            //        }
+            //        else
+            //        {
+            //            WriteError("Column drop: " + droppedColumn.Parent.Name + "." + droppedColumn.Name);
+            //            script.AppendLine(droppedColumn.ToSqlDrop());
+            //        }
+            //        issues = true;
+            //    }
+            //}
 
 
-			if (issues == false)
+            //if (issues == false)
 			{
 				string updateScript = diff.ToSqlDiff().ToSQL();
 				updateScript = updateScript.Substring(updateScript.IndexOf("GO") + 2).Trim();
