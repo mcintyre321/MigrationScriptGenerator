@@ -8,11 +8,9 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using DBDiff.Schema;
-using DBDiff.Schema.SQLServer;
-using DBDiff.Schema.SQLServer.Options;
-using Microsoft.SqlServer.Management.Smo;
-using Column=DBDiff.Schema.SQLServer.Model.Column;
-using Table=DBDiff.Schema.SQLServer.Model.Table;
+using DBDiff.Schema.SQLServer.Generates.Generates;
+using DBDiff.Schema.SQLServer.Generates.Model;
+using DBDiff.Schema.SQLServer.Generates.Options;
 
 namespace MigrationScriptGenerator
 {
@@ -38,29 +36,31 @@ namespace MigrationScriptGenerator
             GenerateScript(new SqlConnectionStringBuilder("server=" + oldServerName + ";database=" + oldDbName + ";trusted_connection=true"), new SqlConnectionStringBuilder("server=" + newServerName + ";database=" + newDbName + ";trusted_connection=true"), scriptOutputDirectory);
         }
 
-        public static void GenerateScript(SqlConnectionStringBuilder old, SqlConnectionStringBuilder next, string scriptOutputDirectory)
+        public static void GenerateScript(SqlConnectionStringBuilder source, SqlConnectionStringBuilder destination, string scriptOutputDirectory, SqlOption option = null)
 	    {
 	        Console.WriteLine("Starting " + typeof(Program).Assembly.GetName().Name);
 			var sw = new Stopwatch();
 			sw.Start();
-			var oldSmoServer = new Server(old.DataSource);
-			Database oldSmoDb = oldSmoServer.Databases[old.InitialCatalog];
+			var oldSmoServer = new Microsoft.SqlServer.Management.Smo.Server(source.DataSource);
+			var oldSmoDb = oldSmoServer.Databases[source.InitialCatalog];
 			if (oldSmoDb == null)
 			{
-				oldSmoDb = new Database(oldSmoServer, old.InitialCatalog);
+                oldSmoDb = new Microsoft.SqlServer.Management.Smo.Database(oldSmoServer, source.InitialCatalog);
 				oldSmoDb.Create();
 			}
 			
 
-			var options = new SqlOption();
-			var sql = new Generate();
-            sql.ConnectionString = old.ToString();
-			DBDiff.Schema.SQLServer.Model.Database oldDiffDb = sql.Process(options);
+            var sql = new Generate
+            {
+                ConnectionString = source.ToString(),
+                Options = option ?? new SqlOption()
+            };
+            Database sourceDatabase = sql.Process();
 
-            sql.ConnectionString = next.ToString();
-			DBDiff.Schema.SQLServer.Model.Database newDiffDb = sql.Process(options);
+            sql.ConnectionString = destination.ToString();
+			Database destinationDatabase = sql.Process();
 
-			DBDiff.Schema.SQLServer.Model.Database diff = Generate.Compare(oldDiffDb, newDiffDb);
+			Database diff = Generate.Compare(sourceDatabase, destinationDatabase);
 			var script = new StringBuilder();
 			bool issues = false;
 
