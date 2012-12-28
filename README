@@ -1,0 +1,33 @@
+This is a command line tool for automatically doing a schema diff between two databases, and generating the change script for mapping between the two. It works with SQL Server.
+
+If the tool detects a change that would delete data (e.g. a table drop, column drop or alter) it will throw an error to the console, and generate a suggested change script.
+
+HOW TO USE THE TOOL
+
+Imagine you have a local (or shared) development database called DevDb. Create a copy of this locally on your machine called DevDb_Next. Make your desired changes to this using the tool of your choice (Enterprise manager, SchemaExport etc etc). 
+
+Now execute MigrationScriptGenerator.exe to produce a sync change script. The generated SQL script with have a .sql.suggested file extension. If there are destructive changes in the script, it will give you a a warning. If you are happy with the sql script, rename the extension to .sql.
+
+If you're feeling particularly clever, use http://code.google.com/p/simplescriptrunner/ or something similar to execute the scripts against DevDb.
+
+Once you're happy with the script, check it in. Job done!
+
+HOW TO RUN THE TOOL
+
+From the command line, run:
+{{{
+MigrationScriptGenerator <SQLInstance running current db> <current db name> <SQLInstance running db with new schema> <new schema db name> <output path for generated sql scripts>
+e.g.
+MigrationScriptGenerator .\sqlexpress SomeProjectDb .\sqlExpress SomeProjectDb_Next c:\mysqlscripts\
+
+or (from a Visual Studio post build event) 
+DatabaseMigrationManager . $(SolutionName)Db_$(ConfigurationName) . $(SolutionName)Db_$(ConfigurationName)_Next $(ProjectDir)
+}}}
+*Please have a look at the example project*. Try adding and removing a few properties from the entity objects and rebuilding the solution. The project has been set up expecting to point to the local default SQL Server instance. It also uses Microsoft SMO to create the databases, so you may need to reference the version that you have.
+
+DISCLAIMER
+This was written quite quickly and without TDD. Given that data migrations are a fairly important thing in production systems, I would suggest you review the generated scripts carefully before using on production. You use at your own risk.
+
+THANKS
+
+to the people who wrote [http://www.codeplex.com/OpenDBiff Open DBDiff] without whom none of this would have been possible.
